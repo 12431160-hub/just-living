@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-<title>線を描く</title>
+<title>Just living</title>
 <style>
 body, html {
     height: 100%;
@@ -48,7 +48,7 @@ body, html {
 <body>
 <div id="drawing-area">
   <canvas id="drawCanvas"></canvas>
-  <button id="resetButton">全リセット</button>
+  <button id="resetButton">Clear</button>
 </div>
 
 <!-- BGM（自動ループ再生） -->
@@ -138,11 +138,18 @@ function draw(e){
 
     // building（草）30%
     if(Math.random()<0.3){
-        const grassImages=['building.png','building2.png','building3.png'];
+        const grassImages=['building.png','building2.png','building3.png','building4.png']; // building4追加
         const img=new Image();
         img.src=grassImages[Math.floor(Math.random()*grassImages.length)];
         img.onload=function(){
-            const imgWidth=150,imgHeight=200;
+            let imgWidth=150, imgHeight=200;
+
+            // building4だけ縦90%、横70%に調整
+            if(img.src.includes('building4.png')){
+                imgWidth *= 0.9;
+                imgHeight *= 0.73;
+            }
+
             const offsetX=(Math.random()-0.5)*50;
             const offsetY=(Math.random()-0.5)*50;
             ctx.drawImage(img,newX+offsetX-imgWidth/2,newY+offsetY-imgHeight/2,imgWidth,imgHeight);
@@ -224,3 +231,4 @@ resetButton.addEventListener('click',function(){
 </script>
 </body>
 </html>
+
