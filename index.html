@@ -35,6 +35,12 @@ body, html {
     cursor: pointer;
 }
 #resetButton:hover { background-color: #ff4500; }
+.gif-image {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 2s;
+    pointer-events: none;
+}
 </style>
 </head>
 <body>
@@ -49,12 +55,19 @@ body, html {
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
 const resetButton = document.getElementById('resetButton');
+const drawingArea = document.getElementById('drawing-area');
+const movingGIFs = [];
 
 const bgm = document.getElementById('bgm');
 document.body.addEventListener('click', () => { if (bgm.paused) bgm.play(); }, { once: true });
 
 const backgroundImage = new Image();
-backgroundImage.src = window.innerHeight > window.innerWidth ? 'background2.JPG' : 'background.PNG';
+if (window.innerHeight > window.innerWidth) {
+    backgroundImage.src = 'background2.jpg';
+} else {
+    backgroundImage.src = 'background.PNG';
+}
+
 let bgLoaded = false;
 backgroundImage.onload = () => { bgLoaded = true; drawBackground(); };
 
@@ -64,15 +77,15 @@ function resizeCanvas() {
     canvas.height = window.innerHeight * dpr;
     canvas.style.width = window.innerWidth + 'px';
     canvas.style.height = window.innerHeight + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
     drawBackground();
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-function drawBackground(){
+function drawBackground() {
     if (!bgLoaded) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.drawImage(backgroundImage, 0, 0, window.innerWidth, window.innerHeight);
 }
 
@@ -82,10 +95,20 @@ let x = 0, y = 0;
 function getPos(e){
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches && e.touches[0];
-    return { x: (touch ? touch.clientX : e.clientX) - rect.left, y: (touch ? touch.clientY : e.clientY) - rect.top };
+    return {
+        x: (touch ? touch.clientX : e.clientX) - rect.left,
+        y: (touch ? touch.clientY : e.clientY) - rect.top
+    };
 }
 
-function startDrawing(e){ e.preventDefault(); drawing = true; const pos = getPos(e); x = pos.x; y = pos.y; }
+function startDrawing(e){
+    e.preventDefault();
+    drawing = true;
+    const pos = getPos(e);
+    x = pos.x;
+    y = pos.y;
+}
+
 function stopDrawing(){ drawing = false; }
 
 function draw(e){
@@ -94,44 +117,116 @@ function draw(e){
     const pos = getPos(e);
     const newX = pos.x, newY = pos.y;
 
-    ctx.strokeStyle = 'rgba(0,0,0,0)';
+    ctx.strokeStyle = "rgba(0,0,0,0)";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(newX, newY);
+    ctx.moveTo(x,y);
+    ctx.lineTo(newX,newY);
     ctx.stroke();
 
     x = newX;
     y = newY;
 
-    // 家の出現確率を0.2
-    if(Math.random() < 0.22){ spawnBuilding(newX, newY); }
+    // 家の出現確率0.24（今の8割くらい）
+    if(Math.random() < 0.24){
+        spawnBuilding(newX, newY);
+    }
+
+    // 人間GIFの出現確率4%
+    if(Math.random() < 0.04){
+        placeRandomGIF(newX, newY);
+    }
 }
 
 function spawnBuilding(px, py){
     const files = ['building.png','building2.png','building3.png','building4.png'];
+    const chosen = files[Math.floor(Math.random()*files.length)];
     const img = new Image();
-    const chosen = files[Math.floor(Math.random() * files.length)];
     img.src = chosen;
 
     img.onload = () => {
         const baseW = 150, baseH = 200;
         const scale = Math.min(window.innerWidth / 800, 1);
-        let w = baseW * scale;
-        let h = baseH * scale;
-       if (chosen === 'building4.png') {
-    w = w * 0.6;  // 横も今の8割に
-    h = h * 0.8;  // 縦も今の8割に
-}
+        let w = baseW * scale, h = baseH * scale;
+
+        if(chosen === 'building4.png'){
+            w *= 0.8;
+            h *= 0.6;
+        }
+
         ctx.drawImage(img, px - w/2, py - h/2, w, h);
     };
 }
 
-resetButton.addEventListener('click', drawBackground);
+function placeRandomGIF(x, y) {
+    const gifImages = ['human.GIF','human2.GIF','human3.GIF'];
+    const randomImage = gifImages[Math.floor(Math.random() * gifImages.length)];
+    const img = document.createElement('img');
+    img.src = randomImage;
+    img.className = 'gif-image';
+
+    let size = (randomImage==='human3.GIF')?25:50;
+    img.style.width = size + 'px';
+    img.style.height = size + 'px';
+    img.style.left = (x + (Math.random()-0.5)*50) + 'px';
+    img.style.top = (y + (Math.random()-0.5)*50) + 'px';
+
+    drawingArea.appendChild(img);
+    setTimeout(()=>{img.style.opacity = 1;},2000);
+
+    movingGIFs.push({
+        element: img,
+        x: parseFloat(img.style.left),
+        y: parseFloat(img.style.top),
+        dx: (Math.random()-0.5)*0.5,
+        dy: (Math.random()-0.5)*0.5,
+        size: size,
+        stopped: false,
+        stopTimeout: null
+    });
+
+    scheduleStop(movingGIFs[movingGIFs.length-1]);
+}
+
+function scheduleStop(gif){
+    const nextStop = 3000 + Math.random()*3000;
+    gif.stopTimeout = setTimeout(()=>{
+        gif.stopped = true;
+        const stopDuration = 2000 + Math.random()*2000;
+        setTimeout(()=>{
+            gif.stopped = false;
+            scheduleStop(gif);
+        }, stopDuration);
+    }, nextStop);
+}
+
+function animateGIFs(){
+    movingGIFs.forEach(gif=>{
+        if(!gif.stopped){
+            gif.x += gif.dx;
+            gif.y += gif.dy;
+            if(gif.x<0||gif.x+gif.size>window.innerWidth) gif.dx*=-1;
+            if(gif.y<0||gif.y+gif.size>window.innerHeight) gif.dy*=-1;
+            gif.element.style.left = gif.x + 'px';
+            gif.element.style.top = gif.y + 'px';
+        }
+    });
+    requestAnimationFrame(animateGIFs);
+}
+animateGIFs();
+
+resetButton.addEventListener('click', () => {
+    drawBackground();
+    document.querySelectorAll('.gif-image').forEach(el=>el.remove());
+    movingGIFs.forEach(gif=>clearTimeout(gif.stopTimeout));
+    movingGIFs.length = 0;
+});
+
 canvas.addEventListener('mousedown', startDrawing);
 canvas.addEventListener('mousemove', draw);
 canvas.addEventListener('mouseup', stopDrawing);
 canvas.addEventListener('mouseleave', stopDrawing);
+
 canvas.addEventListener('touchstart', startDrawing);
 canvas.addEventListener('touchmove', draw);
 canvas.addEventListener('touchend', stopDrawing);
