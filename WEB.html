@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Just living</title>
+<style>
+body, html {
+    height: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f0f0;
+}
+#drawing-area {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-image: url('background.PNG'); /* デフォルト横長用 */
+    background-size: cover;
+    background-position: center;
+}
+#drawCanvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+#resetButton {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #ff6347;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 10;
+}
+#resetButton:hover { background-color: #ff4500; }
+.gif-image {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 2s;
+    pointer-events: none;
+}
+</style>
+</head>
+<body>
+<div id="drawing-area">
+  <canvas id="drawCanvas"></canvas>
+  <button id="resetButton">Clear</button>
+</div>
+
+<audio id="bgm" src="bgm.mp3" autoplay loop></audio>
+
+<script>
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+const resetButton = document.getElementById('resetButton');
+const drawingArea = document.getElementById('drawing-area');
+const bgm = document.getElementById('bgm');
+
+document.body.addEventListener('click', () => { if (bgm.paused) bgm.play(); }, { once: true });
+
+// 縦長端末なら縦用背景に切り替え
+if(window.innerHeight > window.innerWidth){
+    drawingArea.style.backgroundImage = "url('background2.jpg')";
+}
+
+// canvas リサイズ
+function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// 描画用
+let drawing = false;
+let x = 0, y = 0;
+const movingGIFs = [];
+
+// 位置取得
+function getPos(e){
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches && e.touches[0];
+    return {
+        x: (touch ? touch.clientX : e.clientX) - rect.left,
+        y: (touch ? touch.clientY : e.clientY) - rect.top
+    };
+}
+
+function startDrawing(e){
+    e.preventDefault();
+    drawing = true;
+    const pos = getPos(e);
+    x = pos.x; y = pos.y;
+}
+
+function stopDrawing(){ drawing = false; }
+
+function draw(e){
+    if(!drawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    const newX = pos.x, newY = pos.y;
+
+    x = newX; y = newY;
+
+    // 家の出現確率0.24
+    if(Math.random() < 0.24) spawnBuilding(newX,newY);
+    // GIFの出現確率0.04
+    if(Math.random() < 0.04) placeRandomGIF(newX,newY);
+}
+
+// 家生成
+function spawnBuilding(px, py){
+    const files = ['building.png','building2.png','building3.png','building4.png'];
+    const img = new Image();
+    const chosen = files[Math.floor(Math.random()*files.length)];
+    img.src = chosen;
+
+    img.onload = () => {
+        const baseW = 150;
+        const baseH = 200;
+        const scale = Math.min(window.innerWidth/800, 1);
+        let w = baseW * scale;
+        let h = baseH * scale;
+
+        if(chosen === 'building4.png'){
+            w *= 0.8;
+            h *= 0.6;
+        }
+
+        ctx.drawImage(img, px - w/2, py - h/2, w, h);
+    };
+}
+
+// GIF生成
+function placeRandomGIF(x,y){
+    const gifImages=['human.GIF','human2.GIF','human3.GIF'];
+    let randomImage = gifImages[Math.floor(Math.random()*gifImages.length)];
+    const img=document.createElement('img');
+    img.src=randomImage;
+    img.className='gif-image';
+
+    let size = (randomImage==='human3.GIF')?25:50;
+    // 小さい画面ならサイズ0.8倍
+    if(window.innerWidth < 500){
+        size *= 0.8;
+        if(Math.random() >= 0.7) return; // 出現率70%に
+    }
+
+    img.style.width=size+'px';
+    img.style.height=size+'px';
+    img.style.left=(x+(Math.random()-0.5)*50)+'px';
+    img.style.top=(y+(Math.random()-0.5)*50)+'px';
+
+    drawingArea.appendChild(img);
+    setTimeout(()=>{img.style.opacity=1;},2000);
+
+    movingGIFs.push({
+        element: img,
+        x: parseFloat(img.style.left),
+        y: parseFloat(img.style.top),
+        dx: (Math.random()-0.5)*0.5,
+        dy: (Math.random()-0.5)*0.5,
+        size: size,
+        stopped: false,
+        stopTimeout: null
+    });
+    scheduleStop(movingGIFs[movingGIFs.length-1]);
+}
+
+function scheduleStop(gif){
+    const nextStop = 3000+Math.random()*3000;
+    gif.stopTimeout = setTimeout(()=>{
+        gif.stopped=true;
+        const stopDuration = 2000+Math.random()*2000;
+        setTimeout(()=>{
+            gif.stopped=false;
+            scheduleStop(gif);
+        }, stopDuration);
+    }, nextStop);
+}
+
+function animateGIFs(){
+    movingGIFs.forEach(gif=>{
+        if(!gif.stopped){
+            gif.x += gif.dx;
+            gif.y += gif.dy;
+            if(gif.x<0||gif.x+gif.size>window.innerWidth) gif.dx*=-1;
+            if(gif.y<0||gif.y+gif.size>window.innerHeight) gif.dy*=-1;
+            gif.element.style.left=gif.x+'px';
+            gif.element.style.top=gif.y+'px';
+        }
+    });
+    requestAnimationFrame(animateGIFs);
+}
+animateGIFs();
+
+// Clearボタン
+resetButton.addEventListener('click', ()=>{
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    movingGIFs.forEach(gif=>{
+        clearTimeout(gif.stopTimeout);
+        gif.element.remove();
+    });
+    movingGIFs.length=0;
+});
+
+// マウス・タッチ
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', stopDrawing);
+canvas.addEventListener('mouseleave', stopDrawing);
+
+canvas.addEventListener('touchstart', startDrawing);
+canvas.addEventListener('touchmove', draw);
+canvas.addEventListener('touchend', stopDrawing);
+</script>
+</body>
+</html>
+
