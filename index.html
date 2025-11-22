@@ -65,7 +65,7 @@ const backgroundImage = new Image();
 if (window.innerHeight > window.innerWidth) {
     backgroundImage.src = 'background2.jpg';
 } else {
-    backgroundImage.src = 'background.PNG';
+    backgroundImage.src = 'background.png';
 }
 
 let bgLoaded = false;
@@ -151,7 +151,7 @@ function spawnBuilding(px, py){
 
         if(chosen === 'building4.png'){
             w *= 0.8;
-            h *= 0.8;
+            h *= 0.6;
         }
 
         ctx.drawImage(img, px - w/2, py - h/2, w, h);
