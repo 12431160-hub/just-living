@@ -35,12 +35,6 @@ body, html {
     cursor: pointer;
 }
 #resetButton:hover { background-color: #ff4500; }
-.gif-image {
-    position: absolute;
-    opacity: 0;
-    transition: opacity 2s;
-    pointer-events: none;
-}
 </style>
 </head>
 <body>
@@ -55,23 +49,14 @@ body, html {
 const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
 const resetButton = document.getElementById('resetButton');
-const drawingArea = document.getElementById('drawing-area');
 
 const bgm = document.getElementById('bgm');
 document.body.addEventListener('click', () => { if (bgm.paused) bgm.play(); }, { once: true });
 
 const backgroundImage = new Image();
-if (window.innerHeight > window.innerWidth) {
-    backgroundImage.src = 'background2.JPG';
-} else {
-    backgroundImage.src = 'background.PNG';
-}
-
+backgroundImage.src = window.innerHeight > window.innerWidth ? 'background2.jpg' : 'background.PNG';
 let bgLoaded = false;
-backgroundImage.onload = () => {
-    bgLoaded = true;
-    drawBackground();
-};
+backgroundImage.onload = () => { bgLoaded = true; drawBackground(); };
 
 function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
@@ -79,7 +64,6 @@ function resizeCanvas() {
     canvas.height = window.innerHeight * dpr;
     canvas.style.width = window.innerWidth + 'px';
     canvas.style.height = window.innerHeight + 'px';
-
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawBackground();
 }
@@ -98,30 +82,19 @@ let x = 0, y = 0;
 function getPos(e){
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches && e.touches[0];
-    return {
-        x: (touch ? touch.clientX : e.clientX) - rect.left,
-        y: (touch ? touch.clientY : e.clientY) - rect.top
-    };
+    return { x: (touch ? touch.clientX : e.clientX) - rect.left, y: (touch ? touch.clientY : e.clientY) - rect.top };
 }
 
-function startDrawing(e){
-    e.preventDefault();
-    drawing = true;
-    const pos = getPos(e);
-    x = pos.x;
-    y = pos.y;
-}
-
+function startDrawing(e){ e.preventDefault(); drawing = true; const pos = getPos(e); x = pos.x; y = pos.y; }
 function stopDrawing(){ drawing = false; }
 
 function draw(e){
     if(!drawing) return;
     e.preventDefault();
-
     const pos = getPos(e);
     const newX = pos.x, newY = pos.y;
 
-    ctx.strokeStyle = "rgba(0,0,0,0)";
+    ctx.strokeStyle = 'rgba(0,0,0,0)';
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -131,43 +104,31 @@ function draw(e){
     x = newX;
     y = newY;
 
-    // 家の出現確率を0.24に（今まで0.3の約8割）
-    if(Math.random() < 0.24){
-        spawnBuilding(newX, newY);
-    }
+    // 家の出現確率を0.2
+    if(Math.random() < 0.2){ spawnBuilding(newX, newY); }
 }
 
 function spawnBuilding(px, py){
-    const files = ['building.png','building.png','building3.png','building4.png'];
+    const files = ['building.png','building2.png','building3.png','building4.png'];
     const img = new Image();
     const chosen = files[Math.floor(Math.random() * files.length)];
     img.src = chosen;
 
     img.onload = () => {
-        const baseW = 150;
-        const baseH = 200;
+        const baseW = 150, baseH = 200;
         const scale = Math.min(window.innerWidth / 800, 1);
-
         let w = baseW * scale;
         let h = baseH * scale;
-
-        if (chosen === 'building4.png') {
-            h = h * 0.85;
-        }
-
-        ctx.drawImage(img, px - w / 2, py - h / 2, w, h);
+        if(chosen === 'building4.png') h *= 0.8;
+        ctx.drawImage(img, px - w/2, py - h/2, w, h);
     };
 }
 
-resetButton.addEventListener('click', () => {
-    drawBackground();
-});
-
+resetButton.addEventListener('click', drawBackground);
 canvas.addEventListener('mousedown', startDrawing);
 canvas.addEventListener('mousemove', draw);
 canvas.addEventListener('mouseup', stopDrawing);
 canvas.addEventListener('mouseleave', stopDrawing);
-
 canvas.addEventListener('touchstart', startDrawing);
 canvas.addEventListener('touchmove', draw);
 canvas.addEventListener('touchend', stopDrawing);
