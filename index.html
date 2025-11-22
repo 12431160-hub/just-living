@@ -176,7 +176,7 @@ function placeRandomGIF(x, y){
 
     // 出現率も画面幅で調整（最小0.01）
     const baseChance = 0.04;
-    const chance = Math.max(0.1, baseChance * scale * 0.6);
+    const chance = Math.max(0.8, baseChance * scale * 0.9);
     if(Math.random() < chance){
         drawingArea.appendChild(img);
         setTimeout(()=>{img.style.opacity=1;},2000);
