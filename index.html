@@ -12,7 +12,6 @@ body, html {
     justify-content: center;
     align-items: center;
     background-color: #f0f0f0;
-    position: relative;
 }
 #drawing-area {
     position: relative;
@@ -21,7 +20,6 @@ body, html {
     overflow: hidden;
 }
 #drawCanvas {
-    border: none;
     display: block;
 }
 #resetButton {
@@ -59,60 +57,57 @@ const ctx = canvas.getContext('2d');
 const resetButton = document.getElementById('resetButton');
 const drawingArea = document.getElementById('drawing-area');
 
-// BGM autoplay fix
+// autoplay fix
 const bgm = document.getElementById('bgm');
-bgm.volume = 1;
 document.body.addEventListener('click', () => { if (bgm.paused) bgm.play(); }, { once: true });
-
-function playBuildingSound(){
-    const sound = new Audio('building.mp3');
-    sound.volume = 0.7;
-    sound.play();
-}
 
 // Background
 const backgroundImage = new Image();
-backgroundImage.src = 'background.PNG';
-let bgLoaded = false;
-backgroundImage.onload = () => { bgLoaded = true; drawBackground(); };
 
+// 画面が縦長なら background2、横長なら background
+if (window.innerHeight > window.innerWidth) {
+    backgroundImage.src = 'background2.jpg';
+} else {
+    backgroundImage.src = 'background.PNG';
+}
+
+let bgLoaded = false;
+backgroundImage.onload = () => {
+    bgLoaded = true;
+    drawBackground();
+};
+
+// Resize + DPR support
 function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * dpr;
     canvas.height = window.innerHeight * dpr;
     canvas.style.width = window.innerWidth + 'px';
     canvas.style.height = window.innerHeight + 'px';
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.scale(dpr,dpr);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawBackground();
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 function drawBackground(){
-    if(bgLoaded){
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.drawImage(backgroundImage, 0, 0, window.innerWidth, window.innerHeight);
-    }
+    if (!bgLoaded) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(backgroundImage, 0, 0, window.innerWidth, window.innerHeight);
 }
 
+// Drawing logic
 let drawing = false;
 let x = 0, y = 0;
-const path = [];
-const movingGIFs = [];
 
-// Position handler (touch + mouse)
 function getPos(e){
     const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-    if(e.touches && e.touches[0]){
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-    } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-    }
-    return { x: clientX - rect.left, y: clientY - rect.top };
+    const touch = e.touches && e.touches[0];
+    return {
+        x: (touch ? touch.clientX : e.clientX) - rect.left,
+        y: (touch ? touch.clientY : e.clientY) - rect.top
+    };
 }
 
 function startDrawing(e){
@@ -121,10 +116,9 @@ function startDrawing(e){
     const pos = getPos(e);
     x = pos.x;
     y = pos.y;
-    path.push({x,y});
 }
 
-function stopDrawing(e){ drawing = false; }
+function stopDrawing(){ drawing = false; }
 
 function draw(e){
     if(!drawing) return;
@@ -136,111 +130,46 @@ function draw(e){
     ctx.strokeStyle = "rgba(0,0,0,0)";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(x,y);
-    ctx.lineTo(newX,newY);
+    ctx.moveTo(x, y);
+    ctx.lineTo(newX, newY);
     ctx.stroke();
 
+    x = newX;
+    y = newY;
+
+    // ランダム建物
     if(Math.random() < 0.3){
-        const buildingImages=['building.png','building2.png','building3.png','building4.png'];
-        const img=new Image();
-        img.src=buildingImages[Math.floor(Math.random()*buildingImages.length)];
-        img.onload=function(){
-            // ウィンドウ幅に応じたスケーリング
-            const scaleFactor = Math.min(window.innerWidth/800, 1); // 800px基準
-            let imgWidth=150*scaleFactor, imgHeight=200*scaleFactor;
-            if(img.src.includes('building4.png')){
-                imgWidth *= 0.9;
-                imgHeight *= 0.73;
-            }
-            const offsetX=(Math.random()-0.5)*50*scaleFactor;
-            const offsetY=(Math.random()-0.5)*50*scaleFactor;
-            ctx.drawImage(img,newX+offsetX-imgWidth/2,newY+offsetY-imgHeight/2,imgWidth,imgHeight);
-            playBuildingSound();
-        };
+        spawnBuilding(newX, newY);
     }
-
-    if(Math.random() < 0.04){ placeRandomGIF(newX,newY); }
-
-    path.push({x:newX,y:newY});
-    x=newX; y=newY;
 }
 
-function placeRandomGIF(x,y){
-    const gifImages=['human.GIF','human2.GIF','human3.GIF'];
-    const randomImage=gifImages[Math.floor(Math.random()*gifImages.length)];
-    const img=document.createElement('img');
-    img.src=randomImage;
-    img.className='gif-image';
+function spawnBuilding(px, py){
+    const files = ['building.png','building2.png','building3.png','building4.png'];
+    const img = new Image();
+    img.src = files[Math.floor(Math.random()*files.length)];
 
-    let size=(randomImage==='human3.GIF')?25:50;
-    img.style.width=size+'px';
-    img.style.height=size+'px';
-    img.style.left=(x+(Math.random()-0.5)*50)+'px';
-    img.style.top=(y+(Math.random()-0.5)*50)+'px';
-
-    drawingArea.appendChild(img);
-    setTimeout(()=>{img.style.opacity=1;},2000);
-
-    movingGIFs.push({
-        element: img,
-        x: parseFloat(img.style.left),
-        y: parseFloat(img.style.top),
-        dx: (Math.random()-0.5)*0.5,
-        dy: (Math.random()-0.5)*0.5,
-        size: size,
-        stopped: false,
-        stopTimeout: null
-    });
-
-    scheduleStop(movingGIFs[movingGIFs.length-1]);
+    img.onload = () => {
+        const scale = Math.min(window.innerWidth / 800, 1);
+        const w = 150 * scale;
+        const h = 200 * scale;
+        ctx.drawImage(img, px - w/2, py - h/2, w, h);
+    };
 }
 
-function scheduleStop(gif){
-    const nextStop=3000+Math.random()*3000;
-    gif.stopTimeout=setTimeout(()=>{
-        gif.stopped=true;
-        const stopDuration=2000+Math.random()*2000;
-        setTimeout(()=>{
-            gif.stopped=false;
-            scheduleStop(gif);
-        },stopDuration);
-    },nextStop);
-}
+// Clear button
+resetButton.addEventListener('click', () => {
+    drawBackground();
+});
 
-function animateGIFs(){
-    movingGIFs.forEach(gif=>{
-        if(!gif.stopped){
-            gif.x+=gif.dx;
-            gif.y+=gif.dy;
-            if(gif.x<0||gif.x+gif.size>window.innerWidth) gif.dx*=-1;
-            if(gif.y<0||gif.y+gif.size>window.innerHeight) gif.dy*=-1;
-            gif.element.style.left=gif.x+'px';
-            gif.element.style.top=gif.y+'px';
-        }
-    });
-    requestAnimationFrame(animateGIFs);
-}
-animateGIFs();
-
-// Mouse
+// Listeners
 canvas.addEventListener('mousedown', startDrawing);
 canvas.addEventListener('mousemove', draw);
 canvas.addEventListener('mouseup', stopDrawing);
 canvas.addEventListener('mouseleave', stopDrawing);
 
-// Touch
-canvas.addEventListener('touchstart', startDrawing, { passive: false });
-canvas.addEventListener('touchmove', draw, { passive: false });
-canvas.addEventListener('touchend', stopDrawing, { passive: false });
-canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
-
-resetButton.addEventListener('click',function(){
-    path.length=0;
-    drawBackground();
-    document.querySelectorAll('.gif-image').forEach(el=>el.remove());
-    movingGIFs.forEach(gif=>clearTimeout(gif.stopTimeout));
-    movingGIFs.length=0;
-});
+canvas.addEventListener('touchstart', startDrawing);
+canvas.addEventListener('touchmove', draw);
+canvas.addEventListener('touchend', stopDrawing);
 </script>
 </body>
 </html>
