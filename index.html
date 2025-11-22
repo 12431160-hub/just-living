@@ -57,16 +57,12 @@ const ctx = canvas.getContext('2d');
 const resetButton = document.getElementById('resetButton');
 const drawingArea = document.getElementById('drawing-area');
 
-// autoplay fix
 const bgm = document.getElementById('bgm');
 document.body.addEventListener('click', () => { if (bgm.paused) bgm.play(); }, { once: true });
 
-// Background
 const backgroundImage = new Image();
-
-// 画面が縦長なら background2、横長なら background
 if (window.innerHeight > window.innerWidth) {
-    backgroundImage.src = 'background2.JPG';
+    backgroundImage.src = 'background2.jpg';
 } else {
     backgroundImage.src = 'background.PNG';
 }
@@ -77,7 +73,6 @@ backgroundImage.onload = () => {
     drawBackground();
 };
 
-// Resize + DPR support
 function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * dpr;
@@ -97,7 +92,6 @@ function drawBackground(){
     ctx.drawImage(backgroundImage, 0, 0, window.innerWidth, window.innerHeight);
 }
 
-// Drawing logic
 let drawing = false;
 let x = 0, y = 0;
 
@@ -137,53 +131,38 @@ function draw(e){
     x = newX;
     y = newY;
 
-    // ランダム建物
-    if (Math.random() < 0.3) {
-        const files = ['building.png','building2.png','building3.png','building4.png'];
-        const img = new Image();
-        const chosen = files[Math.floor(Math.random() * files.length)];
-        img.src = chosen;
-
-        img.onload = () => {
-            const baseW = 150;
-            const baseH = 200;
-            const scale = Math.min(window.innerWidth / 800, 1);
-
-            let w = baseW * scale;
-            let h = baseH * scale;
-
-            // building4.png だけ縦85%に縮小
-            if (chosen === 'building4.png') {
-                h = h * 0.85;
-            }
-
-            ctx.drawImage(img, newX - w / 2, newY - h / 2, w, h);
-        };
-    }
-    if(Math.random() < 0.3){
+    // 家の出現確率を0.24に（今まで0.3の約8割）
+    if(Math.random() < 0.24){
         spawnBuilding(newX, newY);
     }
 }
 
 function spawnBuilding(px, py){
-    const files = ['building.png','building2.png','building3.png','building4.png'];
+    const files = ['building.png','BUILDING2.JPG','building3.png','building4.png'];
     const img = new Image();
-    img.src = files[Math.floor(Math.random()*files.length)];
+    const chosen = files[Math.floor(Math.random() * files.length)];
+    img.src = chosen;
 
     img.onload = () => {
+        const baseW = 150;
+        const baseH = 200;
         const scale = Math.min(window.innerWidth / 800, 1);
-        const w = 150 * scale;
-        const h = 200 * scale;
-        ctx.drawImage(img, px - w/2, py - h/2, w, h);
+
+        let w = baseW * scale;
+        let h = baseH * scale;
+
+        if (chosen === 'building4.png') {
+            h = h * 0.85;
+        }
+
+        ctx.drawImage(img, px - w / 2, py - h / 2, w, h);
     };
 }
 
-// Clear button
 resetButton.addEventListener('click', () => {
     drawBackground();
 });
 
-// Listeners
 canvas.addEventListener('mousedown', startDrawing);
 canvas.addEventListener('mousemove', draw);
 canvas.addEventListener('mouseup', stopDrawing);
