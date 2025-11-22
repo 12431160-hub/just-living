@@ -61,13 +61,9 @@ const movingGIFs = [];
 const bgm = document.getElementById('bgm');
 document.body.addEventListener('click', () => { if (bgm.paused) bgm.play(); }, { once: true });
 
+// Background
 const backgroundImage = new Image();
-if (window.innerHeight > window.innerWidth) {
-    backgroundImage.src = 'background2.JPG';
-} else {
-    backgroundImage.src = 'background.PNG';
-}
-
+backgroundImage.src = window.innerHeight > window.innerWidth ? 'background2.jpg' : 'background.PNG';
 let bgLoaded = false;
 backgroundImage.onload = () => { bgLoaded = true; drawBackground(); };
 
@@ -83,9 +79,9 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-function drawBackground() {
+function drawBackground(){
     if (!bgLoaded) return;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(backgroundImage, 0, 0, window.innerWidth, window.innerHeight);
 }
 
@@ -111,6 +107,12 @@ function startDrawing(e){
 
 function stopDrawing(){ drawing = false; }
 
+function playBuildingSound(){
+    const sound = new Audio('building.mp3');
+    sound.volume = 0.7;
+    sound.play();
+}
+
 function draw(e){
     if(!drawing) return;
     e.preventDefault();
@@ -120,81 +122,84 @@ function draw(e){
     ctx.strokeStyle = "rgba(0,0,0,0)";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(x,y);
-    ctx.lineTo(newX,newY);
+    ctx.moveTo(x, y);
+    ctx.lineTo(newX, newY);
     ctx.stroke();
+    x = newX; y = newY;
 
-    x = newX;
-    y = newY;
-
-    // 家の出現確率0.24（今の8割くらい）
+    // 家の出現確率 0.3の約8割 → 0.24
     if(Math.random() < 0.24){
         spawnBuilding(newX, newY);
     }
 
-    // 人間GIFの出現確率4%
-    if(Math.random() < 0.04){
-        placeRandomGIF(newX, newY);
-    }
+    // 人間
+    placeRandomGIF(newX, newY);
 }
 
 function spawnBuilding(px, py){
     const files = ['building.png','building2.png','building3.png','building4.png'];
-    const chosen = files[Math.floor(Math.random()*files.length)];
+    const chosen = files[Math.floor(Math.random() * files.length)];
     const img = new Image();
     img.src = chosen;
 
     img.onload = () => {
         const baseW = 150, baseH = 200;
         const scale = Math.min(window.innerWidth / 800, 1);
-        let w = baseW * scale, h = baseH * scale;
+        let w = baseW * scale;
+        let h = baseH * scale;
 
-        if(chosen === 'building4.png'){
-            w *= 0.8;
-            h *= 0.6;
+        if (chosen === 'building4.png') {
+            w *= 0.8; h *= 0.8; // building4だけ縦横8割
         }
-
         ctx.drawImage(img, px - w/2, py - h/2, w, h);
+        playBuildingSound();
     };
 }
 
-function placeRandomGIF(x, y) {
+function placeRandomGIF(x, y){
     const gifImages = ['human.GIF','human2.GIF','human3.GIF'];
-    const randomImage = gifImages[Math.floor(Math.random() * gifImages.length)];
+    const randomImage = gifImages[Math.floor(Math.random()*gifImages.length)];
     const img = document.createElement('img');
     img.src = randomImage;
     img.className = 'gif-image';
 
-    let size = (randomImage==='human3.GIF')?25:50;
-    img.style.width = size + 'px';
-    img.style.height = size + 'px';
-    img.style.left = (x + (Math.random()-0.5)*50) + 'px';
-    img.style.top = (y + (Math.random()-0.5)*50) + 'px';
+    // 画面幅に応じてサイズと出現率を調整
+    const baseSize = (randomImage==='human3.GIF')?25:50;
+    const scale = Math.min(window.innerWidth / 1440, 1);
+    const size = baseSize * scale;
+    img.style.width = size+'px';
+    img.style.height = size+'px';
+    img.style.left = (x + (Math.random()-0.5)*50*scale)+'px';
+    img.style.top = (y + (Math.random()-0.5)*50*scale)+'px';
 
-    drawingArea.appendChild(img);
-    setTimeout(()=>{img.style.opacity = 1;},2000);
+    // 出現率も画面幅で調整（小さい画面ほど低め）
+    const baseChance = 0.04;
+    const chance = baseChance * scale * 0.6; // 6割に下げる
+    if(Math.random() < chance){
+        drawingArea.appendChild(img);
+        setTimeout(()=>{img.style.opacity=1;},2000);
 
-    movingGIFs.push({
-        element: img,
-        x: parseFloat(img.style.left),
-        y: parseFloat(img.style.top),
-        dx: (Math.random()-0.5)*0.5,
-        dy: (Math.random()-0.5)*0.5,
-        size: size,
-        stopped: false,
-        stopTimeout: null
-    });
-
-    scheduleStop(movingGIFs[movingGIFs.length-1]);
+        movingGIFs.push({
+            element: img,
+            x: parseFloat(img.style.left),
+            y: parseFloat(img.style.top),
+            dx: (Math.random()-0.5)*0.5*scale,
+            dy: (Math.random()-0.5)*0.5*scale,
+            size: size,
+            stopped: false,
+            stopTimeout: null
+        });
+        scheduleStop(movingGIFs[movingGIFs.length-1]);
+    }
 }
 
 function scheduleStop(gif){
-    const nextStop = 3000 + Math.random()*3000;
-    gif.stopTimeout = setTimeout(()=>{
-        gif.stopped = true;
-        const stopDuration = 2000 + Math.random()*2000;
+    const nextStop=3000+Math.random()*3000;
+    gif.stopTimeout=setTimeout(()=>{
+        gif.stopped=true;
+        const stopDuration=2000+Math.random()*2000;
         setTimeout(()=>{
-            gif.stopped = false;
+            gif.stopped=false;
             scheduleStop(gif);
         }, stopDuration);
     }, nextStop);
@@ -205,10 +210,10 @@ function animateGIFs(){
         if(!gif.stopped){
             gif.x += gif.dx;
             gif.y += gif.dy;
-            if(gif.x<0||gif.x+gif.size>window.innerWidth) gif.dx*=-1;
-            if(gif.y<0||gif.y+gif.size>window.innerHeight) gif.dy*=-1;
-            gif.element.style.left = gif.x + 'px';
-            gif.element.style.top = gif.y + 'px';
+            if(gif.x<0 || gif.x+gif.size>window.innerWidth) gif.dx*=-1;
+            if(gif.y<0 || gif.y+gif.size>window.innerHeight) gif.dy*=-1;
+            gif.element.style.left = gif.x+'px';
+            gif.element.style.top = gif.y+'px';
         }
     });
     requestAnimationFrame(animateGIFs);
@@ -219,7 +224,7 @@ resetButton.addEventListener('click', () => {
     drawBackground();
     document.querySelectorAll('.gif-image').forEach(el=>el.remove());
     movingGIFs.forEach(gif=>clearTimeout(gif.stopTimeout));
-    movingGIFs.length = 0;
+    movingGIFs.length=0;
 });
 
 canvas.addEventListener('mousedown', startDrawing);
@@ -227,9 +232,10 @@ canvas.addEventListener('mousemove', draw);
 canvas.addEventListener('mouseup', stopDrawing);
 canvas.addEventListener('mouseleave', stopDrawing);
 
-canvas.addEventListener('touchstart', startDrawing);
-canvas.addEventListener('touchmove', draw);
-canvas.addEventListener('touchend', stopDrawing);
+canvas.addEventListener('touchstart', startDrawing, { passive: false });
+canvas.addEventListener('touchmove', draw, { passive: false });
+canvas.addEventListener('touchend', stopDrawing, { passive: false });
+canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
 </script>
 </body>
 </html>
