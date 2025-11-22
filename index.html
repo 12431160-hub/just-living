@@ -62,7 +62,7 @@ document.body.addEventListener('click', () => { if (bgm.paused) bgm.play(); }, {
 
 const backgroundImage = new Image();
 if (window.innerHeight > window.innerWidth) {
-    backgroundImage.src = 'background2.jpg';
+    backgroundImage.src = 'background2.JPG';
 } else {
     backgroundImage.src = 'background.PNG';
 }
@@ -138,7 +138,7 @@ function draw(e){
 }
 
 function spawnBuilding(px, py){
-    const files = ['building.png','BUILDING2.JPG','building3.png','building4.png'];
+    const files = ['building.png','building.png','building3.png','building4.png'];
     const img = new Image();
     const chosen = files[Math.floor(Math.random() * files.length)];
     img.src = chosen;
