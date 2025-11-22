@@ -105,7 +105,7 @@ function draw(e){
     y = newY;
 
     // 家の出現確率を0.2
-    if(Math.random() < 0.2){ spawnBuilding(newX, newY); }
+    if(Math.random() < 0.22){ spawnBuilding(newX, newY); }
 }
 
 function spawnBuilding(px, py){
@@ -119,7 +119,10 @@ function spawnBuilding(px, py){
         const scale = Math.min(window.innerWidth / 800, 1);
         let w = baseW * scale;
         let h = baseH * scale;
-        if(chosen === 'building4.png') h *= 0.8;
+       if (chosen === 'building4.png') {
+    w = w * 0.6;  // 横も今の8割に
+    h = h * 0.8;  // 縦も今の8割に
+}
         ctx.drawImage(img, px - w/2, py - h/2, w, h);
     };
 }
