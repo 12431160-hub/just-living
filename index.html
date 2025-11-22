@@ -127,12 +127,10 @@ function draw(e){
     ctx.stroke();
     x = newX; y = newY;
 
-    // 家の出現確率 0.3の約8割 → 0.24
     if(Math.random() < 0.24){
         spawnBuilding(newX, newY);
     }
 
-    // 人間
     placeRandomGIF(newX, newY);
 }
 
@@ -149,7 +147,7 @@ function spawnBuilding(px, py){
         let h = baseH * scale;
 
         if (chosen === 'building4.png') {
-            w *= 0.8; h *= 0.8; // building4だけ縦横8割
+            w *= 0.8; h *= 0.6; // 縦横
         }
         ctx.drawImage(img, px - w/2, py - h/2, w, h);
         playBuildingSound();
@@ -163,18 +161,22 @@ function placeRandomGIF(x, y){
     img.src = randomImage;
     img.className = 'gif-image';
 
-    // 画面幅に応じてサイズと出現率を調整
+    // 小さい画面だけスケール
+    let scale = 1;
+    if(window.innerWidth < 1000){ // iPhoneとか
+        scale = Math.min(window.innerWidth / 1440, 1);
+    }
+
     const baseSize = (randomImage==='human3.GIF')?25:50;
-    const scale = Math.min(window.innerWidth / 1440, 1);
-    const size = baseSize * scale;
+    const size = baseSize * scale * 0.8; // 小さい画面でのみ縮小
     img.style.width = size+'px';
     img.style.height = size+'px';
     img.style.left = (x + (Math.random()-0.5)*50*scale)+'px';
     img.style.top = (y + (Math.random()-0.5)*50*scale)+'px';
 
-    // 出現率も画面幅で調整（小さい画面ほど低め）
+    // 出現率も画面幅で調整（最小0.01）
     const baseChance = 0.04;
-    const chance = baseChance * scale * 0.6; // 6割に下げる
+    const chance = Math.max(0.1, baseChance * scale * 0.6);
     if(Math.random() < chance){
         drawingArea.appendChild(img);
         setTimeout(()=>{img.style.opacity=1;},2000);
