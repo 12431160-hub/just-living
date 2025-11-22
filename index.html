@@ -54,7 +54,7 @@ const bgm = document.getElementById('bgm');
 document.body.addEventListener('click', () => { if (bgm.paused) bgm.play(); }, { once: true });
 
 const backgroundImage = new Image();
-backgroundImage.src = window.innerHeight > window.innerWidth ? 'background2.jpg' : 'background.PNG';
+backgroundImage.src = window.innerHeight > window.innerWidth ? 'background2.JPG' : 'background.PNG';
 let bgLoaded = false;
 backgroundImage.onload = () => { bgLoaded = true; drawBackground(); };
 
