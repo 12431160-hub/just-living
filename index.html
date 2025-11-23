@@ -134,7 +134,7 @@ function spawnBuilding(px,py){
     const img = new Image();
     img.src = chosen;
     img.onload = () => {
-        const baseW=150, baseH=200;
+        const baseW=180, baseH=240;
         const scale=Math.min(window.innerWidth/800,1);
         let w=baseW*scale, h=baseH*scale;
         if(chosen==='building4.png'){
