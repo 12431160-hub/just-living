@@ -138,7 +138,7 @@ function spawnBuilding(px,py){
         const scale=Math.min(window.innerWidth/800,1);
         let w=baseW*scale, h=baseH*scale;
         if(chosen==='building4.png'){
-            w*=0.8; h*=0.8; // building4だけ縦横0.8倍
+            w*=0.8; h*=0.6; // building4だけ縦横0.8倍
         }
         buildings.push({img, x:px, y:py, w, h});
         drawScene();
