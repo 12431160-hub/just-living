@@ -18,15 +18,9 @@ body, html {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background-image: url('background.PNG'); /* デフォルト横長用 */
-    background-size: cover;
-    background-position: center;
 }
 #drawCanvas {
     display: block;
-    position: absolute;
-    top: 0;
-    left: 0;
 }
 #resetButton {
     position: absolute;
@@ -39,7 +33,6 @@ body, html {
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    z-index: 10;
 }
 #resetButton:hover { background-color: #ff4500; }
 .gif-image {
@@ -63,33 +56,36 @@ const canvas = document.getElementById('drawCanvas');
 const ctx = canvas.getContext('2d');
 const resetButton = document.getElementById('resetButton');
 const drawingArea = document.getElementById('drawing-area');
-const bgm = document.getElementById('bgm');
 
+const bgm = document.getElementById('bgm');
 document.body.addEventListener('click', () => { if (bgm.paused) bgm.play(); }, { once: true });
 
-// 縦長端末なら縦用背景に切り替え
-if(window.innerHeight > window.innerWidth){
-    drawingArea.style.backgroundImage = "url('background2.jpg')";
-}
+// 背景
+const backgroundImage = new Image();
+backgroundImage.src = window.innerHeight > window.innerWidth ? 'background2.jpg' : 'background.png';
+let bgLoaded = false;
+backgroundImage.onload = () => { bgLoaded = true; drawScene(); };
 
-// canvas リサイズ
+// canvasサイズ調整
 function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * dpr;
     canvas.height = window.innerHeight * dpr;
     canvas.style.width = window.innerWidth + 'px';
     canvas.style.height = window.innerHeight + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    drawScene();
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// 描画用
+// 描画管理
+let buildings = [];
 let drawing = false;
-let x = 0, y = 0;
-const movingGIFs = [];
+let x=0,y=0;
+let movingGIFs = [];
 
-// 位置取得
+// 座標取得
 function getPos(e){
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches && e.touches[0];
@@ -103,10 +99,10 @@ function startDrawing(e){
     e.preventDefault();
     drawing = true;
     const pos = getPos(e);
-    x = pos.x; y = pos.y;
+    x=pos.x; y=pos.y;
 }
 
-function stopDrawing(){ drawing = false; }
+function stopDrawing(){ drawing=false; }
 
 function draw(e){
     if(!drawing) return;
@@ -116,88 +112,76 @@ function draw(e){
 
     x = newX; y = newY;
 
-    // 家の出現確率0.24
-    if(Math.random() < 0.24) spawnBuilding(newX,newY);
-    // GIFの出現確率0.04
-    if(Math.random() < 0.04) placeRandomGIF(newX,newY);
+    // 家の出現確率0.24（8割）
+    if(Math.random()<0.24) spawnBuilding(newX,newY);
+
+    // GIF出現
+    let gifRate = 0.04;
+    let gifScale = 1;
+    if(window.innerWidth<=430){ // iPhoneサイズ想定
+        gifRate *= 0.7;
+        gifScale = 0.8;
+    }
+    if(Math.random()<gifRate) placeRandomGIF(newX,newY,gifScale);
+
+    drawScene();
 }
 
-// 家生成
-function spawnBuilding(px, py){
+// 建物生成
+function spawnBuilding(px,py){
     const files = ['building.png','building2.png','building3.png','building4.png'];
-    const img = new Image();
     const chosen = files[Math.floor(Math.random()*files.length)];
+    const img = new Image();
     img.src = chosen;
-
     img.onload = () => {
-        const baseW = 150;
-        const baseH = 200;
-        const scale = Math.min(window.innerWidth/800, 1);
-        let w = baseW * scale;
-        let h = baseH * scale;
-
-        if(chosen === 'building4.png'){
-            w *= 0.8;
-            h *= 0.6;
+        const baseW=150, baseH=200;
+        const scale=Math.min(window.innerWidth/800,1);
+        let w=baseW*scale, h=baseH*scale;
+        if(chosen==='building4.png'){
+            w*=0.8; h*=0.8; // building4だけ縦横0.8倍
         }
-
-        ctx.drawImage(img, px - w/2, py - h/2, w, h);
+        buildings.push({img, x:px, y:py, w, h});
+        drawScene();
     };
 }
 
 // GIF生成
-function placeRandomGIF(x,y){
-    const gifImages=['human.GIF','human2.GIF','human3.GIF'];
-    let randomImage = gifImages[Math.floor(Math.random()*gifImages.length)];
+function placeRandomGIF(px,py,scale=1){
+    const gifs=['human.GIF','human2.GIF','human3.GIF'];
+    const chosen=gifs[Math.floor(Math.random()*gifs.length)];
     const img=document.createElement('img');
-    img.src=randomImage;
+    img.src=chosen;
     img.className='gif-image';
-
-    let size = (randomImage==='human3.GIF')?25:50;
-    // 小さい画面ならサイズ0.8倍
-    if(window.innerWidth < 500){
-        size *= 0.8;
-        if(Math.random() >= 0.7) return; // 出現率70%に
-    }
-
+    let size=(chosen==='human3.GIF'?25:50)*scale;
     img.style.width=size+'px';
     img.style.height=size+'px';
-    img.style.left=(x+(Math.random()-0.5)*50)+'px';
-    img.style.top=(y+(Math.random()-0.5)*50)+'px';
-
+    img.style.left=(px + (Math.random()-0.5)*50)+'px';
+    img.style.top=(py + (Math.random()-0.5)*50)+'px';
     drawingArea.appendChild(img);
     setTimeout(()=>{img.style.opacity=1;},2000);
-
-    movingGIFs.push({
-        element: img,
-        x: parseFloat(img.style.left),
-        y: parseFloat(img.style.top),
-        dx: (Math.random()-0.5)*0.5,
-        dy: (Math.random()-0.5)*0.5,
-        size: size,
-        stopped: false,
-        stopTimeout: null
-    });
+    movingGIFs.push({element:img, x:parseFloat(img.style.left), y:parseFloat(img.style.top), dx:(Math.random()-0.5)*0.5, dy:(Math.random()-0.5)*0.5, size, stopped:false, stopTimeout:null});
     scheduleStop(movingGIFs[movingGIFs.length-1]);
 }
 
+// GIF停止スケジュール
 function scheduleStop(gif){
-    const nextStop = 3000+Math.random()*3000;
-    gif.stopTimeout = setTimeout(()=>{
+    const nextStop=3000+Math.random()*3000;
+    gif.stopTimeout=setTimeout(()=>{
         gif.stopped=true;
-        const stopDuration = 2000+Math.random()*2000;
+        const stopDuration=2000+Math.random()*2000;
         setTimeout(()=>{
             gif.stopped=false;
             scheduleStop(gif);
-        }, stopDuration);
-    }, nextStop);
+        },stopDuration);
+    },nextStop);
 }
 
+// GIFアニメ
 function animateGIFs(){
     movingGIFs.forEach(gif=>{
         if(!gif.stopped){
-            gif.x += gif.dx;
-            gif.y += gif.dy;
+            gif.x+=gif.dx;
+            gif.y+=gif.dy;
             if(gif.x<0||gif.x+gif.size>window.innerWidth) gif.dx*=-1;
             if(gif.y<0||gif.y+gif.size>window.innerHeight) gif.dy*=-1;
             gif.element.style.left=gif.x+'px';
@@ -208,26 +192,31 @@ function animateGIFs(){
 }
 animateGIFs();
 
-// Clearボタン
-resetButton.addEventListener('click', ()=>{
+// シーン描画
+function drawScene(){
+    if(!bgLoaded) return;
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    movingGIFs.forEach(gif=>{
-        clearTimeout(gif.stopTimeout);
-        gif.element.remove();
-    });
-    movingGIFs.length=0;
+    ctx.drawImage(backgroundImage,0,0,window.innerWidth,window.innerHeight);
+    buildings.forEach(b=>ctx.drawImage(b.img,b.x-b.w/2,b.y-b.h/2,b.w,b.h));
+}
+
+// Clearボタン
+resetButton.addEventListener('click',()=>{
+    buildings=[];
+    movingGIFs.forEach(gif=>{clearTimeout(gif.stopTimeout); gif.element.remove();});
+    movingGIFs=[];
+    drawScene();
 });
 
-// マウス・タッチ
+// マウス・タッチイベント
 canvas.addEventListener('mousedown', startDrawing);
 canvas.addEventListener('mousemove', draw);
 canvas.addEventListener('mouseup', stopDrawing);
 canvas.addEventListener('mouseleave', stopDrawing);
-
-canvas.addEventListener('touchstart', startDrawing);
-canvas.addEventListener('touchmove', draw);
-canvas.addEventListener('touchend', stopDrawing);
+canvas.addEventListener('touchstart', startDrawing, {passive:false});
+canvas.addEventListener('touchmove', draw, {passive:false});
+canvas.addEventListener('touchend', stopDrawing, {passive:false});
+canvas.addEventListener('touchcancel', stopDrawing, {passive:false});
 </script>
 </body>
 </html>
-
